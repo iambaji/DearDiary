@@ -7,14 +7,14 @@ import androidx.room.RoomDatabase
 import android.content.Context
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.example.thevampire.deardiary.deardiary.database.Dao.DairyDao
-import com.example.thevampire.deardiary.deardiary.database.entity.DairyItem
+import com.example.thevampire.deardiary.deardiary.database.Dao.DiaryDao
+import com.example.thevampire.deardiary.deardiary.database.entity.DiaryItem
 
-@Database(entities = arrayOf(DairyItem::class), version = 3)
+@Database(entities = arrayOf(DiaryItem::class), version = 3)
 abstract class DiaryDataBase : RoomDatabase()
 {
 
-    abstract fun getDao() : DairyDao
+    abstract fun getDao() : DiaryDao
 
 
 
@@ -36,7 +36,7 @@ abstract class DiaryDataBase : RoomDatabase()
 
      var INSTANCE: DiaryDataBase? = null
 
-        fun getInstance(context: Context): DiaryDataBase? {
+        fun getInstance(context: Context): DiaryDataBase {
             if (INSTANCE == null) {
                     synchronized(DiaryDataBase::class){
                         if(INSTANCE ==  null)
@@ -50,7 +50,8 @@ abstract class DiaryDataBase : RoomDatabase()
 
 
             }
-            return INSTANCE
+            return INSTANCE as DiaryDataBase
+
         }
     }
 }

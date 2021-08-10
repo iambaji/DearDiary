@@ -3,91 +3,99 @@ package com.example.thevampire.deardiary.deardiary.ui
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.EditText
-import android.widget.Toast
+import androidx.activity.viewModels
 import com.example.thevampire.deardiary.R
+import com.example.thevampire.deardiary.databinding.ActivityAddDiaryBinding
 import com.example.thevampire.deardiary.deardiary.database.DiaryDataBase
 import com.example.thevampire.deardiary.deardiary.database.database.AsyncBackgroundTask
 
-import com.example.thevampire.deardiary.deardiary.database.entity.DairyItem
+import com.example.thevampire.deardiary.deardiary.database.entity.DiaryItem
+import com.example.thevampire.deardiary.deardiary.ui.viewmodels.AddDiaryBodyViewModel
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.CollectionReference
-import com.google.firebase.firestore.DocumentReference
-import com.google.firebase.firestore.FirebaseFirestore
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.android.synthetic.main.activity_diary_body.*
+import org.jetbrains.anko.doAsync
+import org.jetbrains.anko.uiThread
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class AddDiaryActivity : AppCompatActivity() {
 
-    lateinit var mcollRef : CollectionReference
-    lateinit var firebase_auth : FirebaseAuth
-    lateinit var userEmail : String
+    lateinit var binding : ActivityAddDiaryBinding
 
+    val viewModel : AddDiaryBodyViewModel by viewModels()
+
+    lateinit var menu : Menu
+    var areWeEditing = false
+    var diaryItem : DiaryItem? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_add_diary)
-        setSupportActionBar(findViewById(R.id.mytoolbar))
-        supportActionBar?.title = "Add Note"
-        firebase_auth = FirebaseAuth.getInstance()
-        userEmail = firebase_auth.currentUser?.email.toString()
+        binding = ActivityAddDiaryBinding.inflate(layoutInflater)
+
+        setContentView(binding.root)
+        setSupportActionBar(binding.mytoolbar.ltoolbar)
+        binding.mytoolbar.ltoolbar.title = "Add Note"
+
+        setUpIntent()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+    private fun setUpIntent()
+    {
+        val did = intent?.extras?.get("dairy_did")
+        did?.let {
+            areWeEditing = true
+            val item = viewModel.getDiaryBody(it as Int)
+            diaryItem = item
+            supportActionBar?.title = item.title
+            binding.editData.setText(item.body)
+            binding.editTitle.setText(item.title)
+
+            binding.editData.addTextChangedListener(object : TextWatcher {
+                override fun afterTextChanged(s: Editable?) {}
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    if(binding.editData.text.toString() != item?.body)
+                        menu?.findItem(R.id.saveitem)?.title = "Update"
+                }
+            })
+        }
+
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.toolbar_menu,menu)
+        this.menu = menu
         return true
     }
 
-    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
 
         if(item?.itemId == R.id.saveitem)
         {
-
-
-
-            var title : EditText = findViewById(R.id.edit_title)
-            var body : EditText =  findViewById(R.id.edit_data)
-            //val date = Date.from()
-            //val now = java.util.Date()
-            val now = Calendar.getInstance()
-            val sdf = SimpleDateFormat("dd-MM-yyyy, HH : mm a").format(now.time)
-            val dairy  = DairyItem(null,sdf.toUpperCase(),title.text.toString(),body.text.toString(),0,userEmail)
-            insert(dairy)
-
+            if(areWeEditing){
+                diaryItem?.body = binding.editData.text.toString()
+                diaryItem?.title = binding.editTitle.text.toString()
+                diaryItem?.let { viewModel.updateNote(it) }
+            }else{
+                var title = binding.editTitle.text.toString()
+                var body = binding.editData.text.toString()
+                viewModel.addNote(title,body)
+            }
             val intent = Intent(this@AddDiaryActivity,FeedActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             startActivity(intent)
             finish()
-
         }
         return true
     }
-
-   private  fun insert(diary: DairyItem)
-    {
-        val db = DiaryDataBase.getInstance(this@AddDiaryActivity)
-        PopulateAsync.populateAsync(db, diary)
-
-        }
-
-
-
-    class PopulateAsync {
-
-        companion object {
-            fun populateAsync(db : DiaryDataBase?, item : DairyItem)
-            {
-                val tsk = AsyncBackgroundTask(db)
-                tsk.execute(item)
-            }
-        }
-    }
-
     }
 
 

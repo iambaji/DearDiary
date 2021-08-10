@@ -7,8 +7,10 @@ import java.sql.Date
 import java.util.*
 
 
-@Entity(tableName = "dairy")
-data class DairyItem(@PrimaryKey(autoGenerate = true) var did: Int?, @ColumnInfo var date: String, @ColumnInfo var title : String,
+@Entity(tableName = "diary")
+data class DiaryItem(@PrimaryKey(autoGenerate = true) var did: Int?,
+                     @ColumnInfo var date: String,
+                     @ColumnInfo var title : String,
                      @ColumnInfo var body: String,
                      @ColumnInfo var upload_status: Int,
                      @ColumnInfo var author: String?)
