@@ -13,11 +13,11 @@ import androidx.activity.viewModels
 import androidx.core.view.GravityCompat
 import androidx.lifecycle.lifecycleScope
 import com.afollestad.materialdialogs.MaterialDialog
-import com.example.thevampire.deardiary.deardiary.adapter.DiaryAdapter
+import com.example.thevampire.deardiary.deardiary.adapters.DiaryAdapter
 import com.example.thevampire.deardiary.R
 import com.example.thevampire.deardiary.databinding.ActivityFeedBinding
 import com.example.thevampire.deardiary.databinding.NavHeaderLayoutBinding
-import com.example.thevampire.deardiary.deardiary.database.entity.DiaryItem
+import com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem
 import com.example.thevampire.deardiary.deardiary.ui.viewmodels.FeedViewModel
 import com.google.firebase.firestore.*
 import kotlinx.android.synthetic.main.activity_diary_body.*

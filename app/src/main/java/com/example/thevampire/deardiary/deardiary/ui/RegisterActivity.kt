@@ -6,84 +6,71 @@ import android.os.Bundle
 import android.view.View
 import android.widget.EditText
 import android.widget.ProgressBar
+import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import com.example.thevampire.deardiary.R
+import com.example.thevampire.deardiary.databinding.ActivityRegisterBinding
+import com.example.thevampire.deardiary.deardiary.repositories.DiaryAccount
+import com.example.thevampire.deardiary.deardiary.ui.viewmodels.RegisterViewModel
+import com.example.thevampire.deardiary.deardiary.ui.viewmodels.UIState
 import com.example.thevampire.deardiary.deardiary.utils.isValidEmail
 import com.example.thevampire.deardiary.deardiary.utils.showMessage
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.android.synthetic.main.activity_register.*
+import kotlinx.coroutines.flow.collectLatest
 
 
 class RegisterActivity : AppCompatActivity() {
 
+    lateinit var binding : ActivityRegisterBinding
 
-    var firebaseauth = FirebaseAuth.getInstance()
-    lateinit var progress_bar : ProgressBar
+    val viewModel : RegisterViewModel by viewModels()
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_register)
-        setSupportActionBar(findViewById(R.id.register_toolbar))
+        binding = ActivityRegisterBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        setSupportActionBar(binding.registerToolbar.ltoolbar)
         supportActionBar?.title = "Register User"
 
-        progress_bar = findViewById(R.id.progress_bar)
-
-
-
+        setUpUI()
+        setUpObservers()
     }
 
-    fun updateProfile(user : FirebaseUser,name : String) : UserProfileChangeRequest
-    {
-        val requestProfileUpdate = UserProfileChangeRequest.Builder()
-        requestProfileUpdate.setDisplayName(name)
-        return requestProfileUpdate.build()
+    private fun setUpObservers() = lifecycleScope.launchWhenStarted {
+        viewModel.uiState.collectLatest {
+            when(it){
+                is UIState.AccountCreated ->{
+                    binding.progressBar.visibility = View.GONE
+                    Snackbar.make(binding.root,"Account Created, Verification Email Sent!",Snackbar.LENGTH_SHORT).show()
+                }
+                is UIState.Error ->{
+                    binding.progressBar.visibility = View.GONE
+                    if(it.message.isNotEmpty())
+                        Snackbar.make(binding.root,it.message,Snackbar.LENGTH_SHORT).show()
+                }
+                is UIState.Loading ->{
+                    binding.progressBar.visibility = View.VISIBLE
+                }
+            }
+        }
     }
 
-    fun register(v : View)
-    {
-//        var error : String? = null
-//        var eerror : String? = null
-//        val name = edit_name.text.trim().toString()
-//        val email = edit_email.text.trim().toString()
-//        val pass = edit_password.text.trim().toString()
-//        if(name.isNotEmpty() && email.isNotEmpty() && pass.isNotEmpty())
-//        {
-//          eerror = if(email.isValidEmail())  null else "enter valid email address"
-//          error = if(pass.length>6) null else "password must be above 6 char"
-//           firebaseauth.createUserWithEmailAndPassword(email.toString(),pass.toString()).addOnCompleteListener {
-//
-//               if(it.isSuccessful)
-//               {
-//                   var user = it.result.user
-//                   val updaterequest = updateProfile(user,name)
-//                   user.updateProfile(updaterequest)
-//                   it.result.user.sendEmailVerification().addOnSuccessListener {
-//                       showMessage(v,"Verification email has been sent to your mail id")
-//                   }
-//
-//
-//                   startActivity(Intent(this,MainActivity::class.java))
-//                   finish()
-//               }
-//               else
-//               {
-//                   showMessage(v,"Account Creation Failed!")
-//               }
-//
-//           }
-//
-//
-//
-//
-//        }
-//        else
-//        {
-//            error = "you need to fill all fields"
-//        }
-//        if (error!=null) showMessage(register_activity,error.toString())
-//        if(eerror!= null) showMessage(register_activity,eerror.toString())
+    private fun setUpUI(){
+        with(binding){
+            registerBtn.setOnClickListener {
+                val name = editName.text.toString()
+                val email = editEmail.text.toString()
+                val password = editPassword.text.toString()
+                viewModel.createUser(DiaryAccount(name,email,password))
+            }
+        }
     }
+
+
 }

@@ -1,7 +1,7 @@
-package com.example.thevampire.deardiary.deardiary.database.Dao
+package com.example.thevampire.deardiary.deardiary.persistance.database.Dao
 
 import androidx.room.*
-import com.example.thevampire.deardiary.deardiary.database.entity.DiaryItem
+import com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem
 
 
 @Dao

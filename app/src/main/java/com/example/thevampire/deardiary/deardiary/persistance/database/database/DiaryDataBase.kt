@@ -1,4 +1,4 @@
-package com.example.thevampire.deardiary.deardiary.database
+package com.example.thevampire.deardiary.deardiary.persistance.database.database
 
 import androidx.room.Database
 import androidx.room.Room
@@ -7,19 +7,13 @@ import androidx.room.RoomDatabase
 import android.content.Context
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.example.thevampire.deardiary.deardiary.database.Dao.DiaryDao
-import com.example.thevampire.deardiary.deardiary.database.entity.DiaryItem
+import com.example.thevampire.deardiary.deardiary.persistance.database.Dao.DiaryDao
+import com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem
 
 @Database(entities = arrayOf(DiaryItem::class), version = 3)
 abstract class DiaryDataBase : RoomDatabase()
 {
-
     abstract fun getDao() : DiaryDao
-
-
-
-
-
     companion object {
 
         val migration_1_2 = object : Migration(1,2){

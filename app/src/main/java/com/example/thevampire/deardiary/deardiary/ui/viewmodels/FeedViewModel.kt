@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.thevampire.deardiary.deardiary.database.entity.DiaryItem
+import com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem
 import com.example.thevampire.deardiary.deardiary.persistance.prefs.AuthSession
 import com.example.thevampire.deardiary.deardiary.repositories.DiaryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

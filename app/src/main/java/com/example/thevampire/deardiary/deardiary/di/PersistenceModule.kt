@@ -1,8 +1,8 @@
 package com.example.thevampire.deardiary.deardiary.di
 
 import android.app.Application
-import com.example.thevampire.deardiary.deardiary.database.Dao.DiaryDao
-import com.example.thevampire.deardiary.deardiary.database.DiaryDataBase
+import com.example.thevampire.deardiary.deardiary.persistance.database.Dao.DiaryDao
+import com.example.thevampire.deardiary.deardiary.persistance.database.database.DiaryDataBase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,7 +15,7 @@ object PersistenceModule {
 
     @Provides
     @Singleton
-    fun provideDiaryDatabase(application : Application) : DiaryDataBase{
+    fun provideDiaryDatabase(application : Application) : DiaryDataBase {
         return DiaryDataBase.getInstance(application.applicationContext)
     }
 

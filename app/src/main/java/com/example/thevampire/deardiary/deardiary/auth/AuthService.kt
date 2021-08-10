@@ -1,4 +1,6 @@
-package com.example.thevampire.deardiary.deardiary.repositories
+package com.example.thevampire.deardiary.deardiary.auth
+
+import com.example.thevampire.deardiary.deardiary.repositories.DiaryAccount
 
 interface AuthService {
 
@@ -17,5 +19,7 @@ interface AuthService {
 
 
     suspend fun getEmail() : String
+
+    suspend fun createUser(diaryAccount: DiaryAccount) : Boolean
 }
 

@@ -1,12 +1,9 @@
-package com.example.thevampire.deardiary.deardiary.adapter
+package com.example.thevampire.deardiary.deardiary.adapters
 
-import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.recyclerview.widget.RecyclerView
-import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import com.afollestad.materialdialogs.MaterialDialog
@@ -15,17 +12,12 @@ import com.afollestad.materialdialogs.checkbox.isCheckPromptChecked
 
 import com.example.thevampire.deardiary.R
 import com.example.thevampire.deardiary.databinding.DiaryTitleLayoutBinding
-import com.example.thevampire.deardiary.deardiary.database.DiaryDataBase
-import com.example.thevampire.deardiary.deardiary.database.entity.DiaryItem
+import com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem
 import com.example.thevampire.deardiary.deardiary.ui.AddDiaryActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.android.synthetic.main.diary_title_layout.view.*
-import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.layoutInflater
-import org.jetbrains.anko.sdk27.coroutines.onClick
-import org.jetbrains.anko.uiThread
 import javax.inject.Inject
 import kotlin.collections.ArrayList
 
@@ -130,12 +122,7 @@ class DiaryAdapter @Inject constructor(@ApplicationContext val context : Context
 
     fun removefromDB(item : DiaryItem)
     {
-//        doAsync {
-//            val i = DiaryDataBase.getInstance(context)?.getDao()?.delete(item)
-//            uiThread {
-//
-//            }
-//        }
+
     }
 
 }

@@ -1,7 +1,7 @@
 package com.example.thevampire.deardiary.deardiary.di
 
-import com.example.thevampire.deardiary.deardiary.repositories.AuthService
-import com.example.thevampire.deardiary.deardiary.repositories.FirebaseAuthService
+import com.example.thevampire.deardiary.deardiary.auth.AuthService
+import com.example.thevampire.deardiary.deardiary.auth.FirebaseAuthService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

@@ -1,11 +1,10 @@
 package com.example.thevampire.deardiary.deardiary.repositories
 
-import androidx.lifecycle.viewModelScope
-import com.example.thevampire.deardiary.deardiary.database.Dao.DiaryDao
-import com.example.thevampire.deardiary.deardiary.database.entity.DiaryItem
+import com.example.thevampire.deardiary.deardiary.auth.AuthService
+import com.example.thevampire.deardiary.deardiary.persistance.database.Dao.DiaryDao
+import com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -66,4 +65,7 @@ class DiaryRepository @Inject constructor(private val authService: AuthService, 
     suspend fun updateNote(diaryItem: DiaryItem) = diaryDao.updateBody(diaryItem)
 
 
+    suspend fun createUser(diaryAccount: DiaryAccount) : Boolean{
+        return authService.createUser(diaryAccount)
+    }
 }

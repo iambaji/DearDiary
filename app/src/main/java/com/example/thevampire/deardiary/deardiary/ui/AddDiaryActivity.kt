@@ -7,24 +7,15 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
-import android.widget.EditText
 import androidx.activity.viewModels
 import com.example.thevampire.deardiary.R
 import com.example.thevampire.deardiary.databinding.ActivityAddDiaryBinding
-import com.example.thevampire.deardiary.deardiary.database.DiaryDataBase
-import com.example.thevampire.deardiary.deardiary.database.database.AsyncBackgroundTask
 
-import com.example.thevampire.deardiary.deardiary.database.entity.DiaryItem
+import com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem
 import com.example.thevampire.deardiary.deardiary.ui.viewmodels.AddDiaryBodyViewModel
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.CollectionReference
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.android.synthetic.main.activity_diary_body.*
-import org.jetbrains.anko.doAsync
-import org.jetbrains.anko.uiThread
-import java.text.SimpleDateFormat
 import java.util.*
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class AddDiaryActivity : AppCompatActivity() {
