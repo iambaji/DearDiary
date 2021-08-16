@@ -8,6 +8,7 @@ import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.recyclerview.widget.LinearLayoutManager
 import android.view.*
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.core.view.GravityCompat
@@ -19,6 +20,7 @@ import com.example.thevampire.deardiary.databinding.ActivityFeedBinding
 import com.example.thevampire.deardiary.databinding.NavHeaderLayoutBinding
 import com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem
 import com.example.thevampire.deardiary.deardiary.ui.viewmodels.FeedViewModel
+import com.google.android.material.navigation.NavigationView
 import com.google.firebase.firestore.*
 import kotlinx.android.synthetic.main.activity_diary_body.*
 import kotlinx.android.synthetic.main.activity_feed.*
@@ -87,9 +89,10 @@ class FeedActivity : AppCompatActivity() {
             mdrawerToggle.syncState()
 
             mdrawerLayout.addDrawerListener(mdrawerToggle as ActionBarDrawerToggle)
-            val nav_header = navigationview.getHeaderView(0)
+
             val navHeaderLayoutBinding = NavHeaderLayoutBinding.inflate(layoutInflater)
             navHeaderLayoutBinding.displaynameNav.text = viewModel.getUsername()
+
 
             navigationview.setNavigationItemSelectedListener {
                 it.isChecked = true
@@ -153,19 +156,13 @@ class FeedActivity : AppCompatActivity() {
         else{
             when(item?.itemId)
             {
-                R.id.add_new ->{
-                    startActivity(Intent(this,AddDiaryActivity::class.java))
+                R.id.add_new -> startActivity(Intent(this,AddDiaryActivity::class.java))
 
-                }
+                R.id.signout_feed_layoult -> viewModel.logoutUser()
 
-                R.id.signout_feed_layoult ->{
-                    viewModel.logoutUser()
-                }
 
-                R.id.upload ->{
-                    //syncToCloud(diary_list)
-                    sendToServer()
-                }
+                R.id.upload -> viewModel.uploadToServer()
+
 
                 R.id.download -> viewModel.downloadFromServer()
             }
@@ -175,62 +172,7 @@ class FeedActivity : AppCompatActivity() {
 
 
 
-    fun saveToLocalDatabase( list : ArrayList<DiaryItem>)
-    {
-//        val db = DiaryDataBase.getInstance(this@FeedActivity)
-//        val newitems = ArrayList<DiaryItem>()
-//        for(listitem in list)
-//        {
-//            if(!localitems.contains(listitem))
-//            {
-//                Log.d("Firebase","Adding New Item ${listitem.title}")
-//                listitem.did = null
-//                newitems.add(listitem)
-//            }
-//
-//
-//        }
-//
-//        doAsync {
-//
-//            db?.getDao()?.addAll(*newitems.toTypedArray())
-//            uiThread {
-//                toast("${newitems.size} Posts are Saved In Database!")
-//            }
-//        }
 
-    }
-
-    fun sendToServer()
-    {
-//        val firestore = FirebaseFirestore.getInstance()
-//        val email = firebase_auth.currentUser?.email
-//        val batch = firestore.batch()
-//        val items = ArrayList<DiaryItem>()
-//        localitems.forEach{
-//            if(it.upload_status ==0)
-//                items.add(it)
-//        }
-//
-//        items.forEach {
-//           val setop = firestore.collection("users/$email/posts")?.document("${it.title} ${it.did}")
-//            batch.set(setop,it)
-//        }
-//
-//        batch.commit().addOnSuccessListener {
-//            items.forEach{
-//                it.upload_status =1
-//
-//                doAsync {
-//                    val db = DiaryDataBase.getInstance(this@FeedActivity)
-//                    db?.getDao()?.updateUploadStatus(it)
-//                }
-//            }
-//            diaryadapter?.notifyDataSetChanged()
-//            toast("Upload Complete!")
-//        }
-
-    }
 
     override fun onPostCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
         super.onPostCreate(savedInstanceState, persistentState)

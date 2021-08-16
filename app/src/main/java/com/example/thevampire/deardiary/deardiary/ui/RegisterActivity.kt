@@ -30,7 +30,6 @@ class RegisterActivity : AppCompatActivity() {
 
     val viewModel : RegisterViewModel by viewModels()
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityRegisterBinding.inflate(layoutInflater)

@@ -1,0 +1,447 @@
+Index: app/src/main/java/com/example/thevampire/deardiary/deardiary/repositories/DiaryRepository.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.thevampire.deardiary.deardiary.repositories\n\nimport com.example.thevampire.deardiary.deardiary.auth.AuthService\nimport com.example.thevampire.deardiary.deardiary.persistance.database.Dao.DiaryDao\nimport com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem\nimport com.google.firebase.firestore.FirebaseFirestore\nimport kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.tasks.await\nimport kotlinx.coroutines.withContext\nimport java.text.SimpleDateFormat\nimport java.util.*\nimport javax.inject.Inject\n\nclass DiaryRepository @Inject constructor(private val authService: AuthService, private val diaryDao : DiaryDao) {\n\n\n    suspend fun loginUser(email : String, password : String) : String?{\n        return authService.signInWithEmailAndPassword(email,password)\n    }\n\n    suspend fun forgotUser(email: String) : Boolean{\n        return authService.forgotUser(email)\n    }\n\n    suspend fun logOutUser() = authService.logOut()\n\n    suspend fun getUsername() = authService.getUsername()\n\n    suspend fun getNotes() = withContext(Dispatchers.IO){\n        val email = authService.getEmail()\n        return@withContext diaryDao.getAll(email)\n    }\n\n    suspend fun getNotesFromServer() : List<DiaryItem> {\n        return withContext(Dispatchers.IO){\n            val diaryItems = arrayListOf<DiaryItem>()\n            val firestore = FirebaseFirestore.getInstance()\n            val email = authService.getEmail()\n            val posts = firestore?.collection(\"users/$email/posts\").get().await()\n            posts.forEach {\n                if(it.exists()){\n                    val item = it.toObject(DiaryItem::class.java)\n                    item.upload_status = 1\n                    diaryItems.add(item)\n                }\n            }\n            return@withContext diaryItems\n        }\n    }\n\n    suspend fun getNote(did : Int) : DiaryItem\n    {\n      return withContext(Dispatchers.IO){\n          return@withContext diaryDao.getBody(did)\n      }\n    }\n\n    suspend fun addNote(title : String, body : String){\n        val now = Calendar.getInstance()\n        val sdf = SimpleDateFormat(\"dd-MM-yyyy, HH : mm a\").format(now.time)\n        val dairy  = DiaryItem(null,sdf.toUpperCase(),title.toString(),body.toString(),0, authService.getEmail())\n        diaryDao.add( dairy )\n    }\n\n    suspend fun updateNote(diaryItem: DiaryItem) = diaryDao.updateBody(diaryItem)\n\n\n    suspend fun createUser(diaryAccount: DiaryAccount) : Boolean{\n        return authService.createUser(diaryAccount)\n    }\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/thevampire/deardiary/deardiary/repositories/DiaryRepository.kt b/app/src/main/java/com/example/thevampire/deardiary/deardiary/repositories/DiaryRepository.kt
+--- a/app/src/main/java/com/example/thevampire/deardiary/deardiary/repositories/DiaryRepository.kt	(revision c069cd9f7096b776557805dbe7b5bf33509288ea)
++++ b/app/src/main/java/com/example/thevampire/deardiary/deardiary/repositories/DiaryRepository.kt	(date 1629133558101)
+@@ -2,11 +2,13 @@
+ 
+ import com.example.thevampire.deardiary.deardiary.auth.AuthService
+ import com.example.thevampire.deardiary.deardiary.persistance.database.Dao.DiaryDao
++import com.example.thevampire.deardiary.deardiary.persistance.database.database.DiaryDataBase
+ import com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem
+ import com.google.firebase.firestore.FirebaseFirestore
+ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.tasks.await
+ import kotlinx.coroutines.withContext
++import java.lang.Exception
+ import java.text.SimpleDateFormat
+ import java.util.*
+ import javax.inject.Inject
+@@ -14,6 +16,10 @@
+ class DiaryRepository @Inject constructor(private val authService: AuthService, private val diaryDao : DiaryDao) {
+ 
+ 
++    val firestore : FirebaseFirestore by lazy {
++        FirebaseFirestore.getInstance()
++    }
++
+     suspend fun loginUser(email : String, password : String) : String?{
+         return authService.signInWithEmailAndPassword(email,password)
+     }
+@@ -34,7 +40,6 @@
+     suspend fun getNotesFromServer() : List<DiaryItem> {
+         return withContext(Dispatchers.IO){
+             val diaryItems = arrayListOf<DiaryItem>()
+-            val firestore = FirebaseFirestore.getInstance()
+             val email = authService.getEmail()
+             val posts = firestore?.collection("users/$email/posts").get().await()
+             posts.forEach {
+@@ -44,10 +49,15 @@
+                     diaryItems.add(item)
+                 }
+             }
++            saveToLocalDB(diaryItems)
+             return@withContext diaryItems
+         }
+     }
+ 
++    private suspend fun saveToLocalDB(items : List<DiaryItem>) {
++        diaryDao.addAll(items)
++    }
++
+     suspend fun getNote(did : Int) : DiaryItem
+     {
+       return withContext(Dispatchers.IO){
+@@ -68,4 +78,36 @@
+     suspend fun createUser(diaryAccount: DiaryAccount) : Boolean{
+         return authService.createUser(diaryAccount)
+     }
++
++
++
++    suspend fun sendToServer() : Boolean?
++    {
++        val email = authService.getEmail()
++        val batch = firestore.batch()
++
++        val items = getNotes()
++        val localItems = items.filter {
++            it.upload_status == 0
++        }
++
++        localItems.forEach {
++            val setOptions = firestore.collection("users/$email/posts")?.document("${it.title} ${it.did}")
++            batch.set(setOptions,it)
++        }
++
++        try {
++            val batchResult = batch.commit().await()
++            batchResult?.let {
++                localItems.forEach {
++                    it.upload_status = 1
++                }
++                diaryDao.addAll(localItems)
++                return true
++            }
++        }catch (e : Exception){
++            return false
++        }
++        return false
++    }
+ }
+\ No newline at end of file
+Index: app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/viewmodels/FeedViewModel.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.thevampire.deardiary.deardiary.ui.viewmodels\n\nimport androidx.lifecycle.LiveData\nimport androidx.lifecycle.MutableLiveData\nimport androidx.lifecycle.ViewModel\nimport androidx.lifecycle.viewModelScope\nimport com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem\nimport com.example.thevampire.deardiary.deardiary.persistance.prefs.AuthSession\nimport com.example.thevampire.deardiary.deardiary.repositories.DiaryRepository\nimport dagger.hilt.android.lifecycle.HiltViewModel\nimport kotlinx.coroutines.flow.MutableStateFlow\nimport kotlinx.coroutines.launch\nimport kotlinx.coroutines.runBlocking\nimport javax.inject.Inject\n\n@HiltViewModel\nclass FeedViewModel @Inject constructor(private val repository: DiaryRepository) : ViewModel(){\n\n    @Inject lateinit var authSession: AuthSession\n\n    private val _diaryNotes = MutableLiveData<List<DiaryItem>>()\n    val diaryNotes : LiveData<List<DiaryItem>>  = _diaryNotes\n    val uiState = MutableStateFlow<FeedUIState>(FeedUIState.NotesSuccess(emptyList()))\n\n\n    fun logoutUser()  {\n        viewModelScope.launch {\n            repository.logOutUser()\n            authSession.logoutUser()}\n    }\n\n    fun getUsername() = runBlocking { return@runBlocking repository.getUsername() }\n\n\n\n    fun getNotes(){\n        viewModelScope.launch {\n            uiState.value = FeedUIState.Loading(\"Please wait!\")\n            val notes = repository.getNotes()\n//            _diaryNotes.value = notes\n            uiState.value = FeedUIState.NotesSuccess(notes)\n        }\n    }\n\n    fun downloadFromServer() = runBlocking { repository.getNotesFromServer() }\n\n\n    sealed class FeedUIState{\n        data class NotesSuccess(val notes : List<DiaryItem>) : FeedUIState()\n        data class Error(val message : String) : FeedUIState()\n        data class Loading(val message: String) : FeedUIState()\n    }\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/viewmodels/FeedViewModel.kt b/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/viewmodels/FeedViewModel.kt
+--- a/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/viewmodels/FeedViewModel.kt	(revision c069cd9f7096b776557805dbe7b5bf33509288ea)
++++ b/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/viewmodels/FeedViewModel.kt	(date 1629134590061)
+@@ -18,8 +18,6 @@
+ 
+     @Inject lateinit var authSession: AuthSession
+ 
+-    private val _diaryNotes = MutableLiveData<List<DiaryItem>>()
+-    val diaryNotes : LiveData<List<DiaryItem>>  = _diaryNotes
+     val uiState = MutableStateFlow<FeedUIState>(FeedUIState.NotesSuccess(emptyList()))
+ 
+ 
+@@ -37,12 +35,21 @@
+         viewModelScope.launch {
+             uiState.value = FeedUIState.Loading("Please wait!")
+             val notes = repository.getNotes()
+-//            _diaryNotes.value = notes
+             uiState.value = FeedUIState.NotesSuccess(notes)
+         }
++    }
++
++
++
++    fun downloadFromServer() = viewModelScope.launch {
++        uiState.value = FeedUIState.Loading("Please wait!")
++        val notes = repository.getNotesFromServer()
++        uiState.value = FeedUIState.NotesSuccess(notes)
+     }
+ 
+-    fun downloadFromServer() = runBlocking { repository.getNotesFromServer() }
++    fun uploadToServer() =  viewModelScope.launch {
++        repository.sendToServer()
++    }
+ 
+ 
+     sealed class FeedUIState{
+Index: app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/FeedActivity.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.thevampire.deardiary.deardiary.ui\n\nimport android.content.Intent\nimport androidx.appcompat.app.AppCompatActivity\nimport android.os.Bundle\nimport android.os.PersistableBundle\nimport com.google.android.material.snackbar.Snackbar\nimport androidx.appcompat.app.ActionBarDrawerToggle\nimport androidx.recyclerview.widget.LinearLayoutManager\nimport android.view.*\nimport android.widget.Toast\nimport androidx.activity.viewModels\nimport androidx.core.view.GravityCompat\nimport androidx.lifecycle.lifecycleScope\nimport com.afollestad.materialdialogs.MaterialDialog\nimport com.example.thevampire.deardiary.deardiary.adapters.DiaryAdapter\nimport com.example.thevampire.deardiary.R\nimport com.example.thevampire.deardiary.databinding.ActivityFeedBinding\nimport com.example.thevampire.deardiary.databinding.NavHeaderLayoutBinding\nimport com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem\nimport com.example.thevampire.deardiary.deardiary.ui.viewmodels.FeedViewModel\nimport com.google.firebase.firestore.*\nimport kotlinx.android.synthetic.main.activity_diary_body.*\nimport kotlinx.android.synthetic.main.activity_feed.*\nimport org.jetbrains.anko.*\nimport dagger.hilt.android.AndroidEntryPoint\nimport kotlinx.android.synthetic.main.activity_main.*\nimport kotlinx.android.synthetic.main.nav_header_layout.*\nimport kotlinx.coroutines.flow.collectLatest\nimport javax.inject.Inject\n\n\n@AndroidEntryPoint\nclass FeedActivity : AppCompatActivity() {\n\n\n    @Inject  lateinit var diaryAdapter : DiaryAdapter\n\n    private lateinit var mdrawerToggle : ActionBarDrawerToggle\n\n    lateinit var binding: ActivityFeedBinding\n\n    private val viewModel : FeedViewModel by viewModels()\n\n    override fun onCreate(savedInstanceState: Bundle?) {\n        super.onCreate(savedInstanceState)\n        binding = ActivityFeedBinding.inflate(layoutInflater)\n        setContentView(binding.root)\n\n\n        setSupportActionBar(binding.feedToolbar.ltoolbar)\n        binding.feedToolbar.ltoolbar.title = \"Notes\"\n        supportActionBar?.apply {\n            setDisplayHomeAsUpEnabled(true)\n        }\n\n        setUpUI()\n        setUpObservers()\n    }\n\n\n    private fun setUpObservers(){\n\n\n        lifecycleScope.launchWhenStarted {\n            viewModel.uiState.collectLatest {\n                when(it){\n                    is FeedViewModel.FeedUIState.NotesSuccess ->{\n                        diaryAdapter.setData(ArrayList(it.notes))\n                    }\n                    is FeedViewModel.FeedUIState.Error ->{\n                        Snackbar.make(binding.root,it.message,Snackbar.LENGTH_SHORT).show()\n                    }\n                }\n            }\n        }\n    }\n\n\n    private fun setUpUI(){\n        with(binding){\n\n             mdrawerToggle =  object : ActionBarDrawerToggle(this@FeedActivity,mdrawerLayout,R.string.draweropen,R.string.drawerclose){\n\n            }\n\n            mdrawerToggle.syncState()\n\n            mdrawerLayout.addDrawerListener(mdrawerToggle as ActionBarDrawerToggle)\n            val nav_header = navigationview.getHeaderView(0)\n            val navHeaderLayoutBinding = NavHeaderLayoutBinding.inflate(layoutInflater)\n            navHeaderLayoutBinding.displaynameNav.text = viewModel.getUsername()\n\n            navigationview.setNavigationItemSelectedListener {\n                it.isChecked = true\n                val msg = it.title\n                when(it.itemId)\n                {\n                    R.id.aboutitem ->{\n                        mdrawerLayout?.closeDrawer(GravityCompat.START)\n                        // startActivity(Intent(this@FeedActivity,AboutActivity::class.java))\n                        MaterialDialog(this@FeedActivity).title(text = \"About the App\")\n                            .message(res = R.string.about_app,\n                            ).positiveButton(text = \"Okay\").show()\n                    }\n\n                    R.id.additem ->\n                    {\n                        mdrawerLayout?.closeDrawer(GravityCompat.START)\n                        startActivity(Intent(this@FeedActivity,AddDiaryActivity::class.java))\n                    }\n\n\n\n                    R.id.logoutitem ->{\n                        mdrawerLayout?.closeDrawer(GravityCompat.START)\n                        Toast.makeText(this@FeedActivity,\"Signing out\",Toast.LENGTH_SHORT).show()\n                        viewModel.logoutUser()\n                        finish()\n                    }\n                }\n\n                true\n            }\n\n\n\n            diaryAdapter?.setFirestore(FirebaseFirestore.getInstance())\n            feedRecyclerView.layoutManager = LinearLayoutManager(this@FeedActivity)\n            feedRecyclerView.adapter = diaryAdapter\n            viewModel.getNotes()\n\n        }\n    }\n\n\n    override fun onCreateOptionsMenu(menu: Menu): Boolean {\n        menuInflater.inflate(R.menu.feed_activity_toolbar,menu)\n        return super.onCreateOptionsMenu(menu)\n\n    }\n\n    override fun onOptionsItemSelected(item: MenuItem): Boolean {\n\n\n\n        val f = mdrawerToggle?.onOptionsItemSelected(item) as Boolean\n        if(f)\n        {\n            binding.mdrawerLayout?.openDrawer(GravityCompat.START)\n            return true\n        }\n        else{\n            when(item?.itemId)\n            {\n                R.id.add_new ->{\n                    startActivity(Intent(this,AddDiaryActivity::class.java))\n\n                }\n\n                R.id.signout_feed_layoult ->{\n                    viewModel.logoutUser()\n                }\n\n                R.id.upload ->{\n                    //syncToCloud(diary_list)\n                    sendToServer()\n                }\n\n                R.id.download -> viewModel.downloadFromServer()\n            }\n        }\n        return super.onOptionsItemSelected(item)\n    }\n\n\n\n    fun saveToLocalDatabase( list : ArrayList<DiaryItem>)\n    {\n//        val db = DiaryDataBase.getInstance(this@FeedActivity)\n//        val newitems = ArrayList<DiaryItem>()\n//        for(listitem in list)\n//        {\n//            if(!localitems.contains(listitem))\n//            {\n//                Log.d(\"Firebase\",\"Adding New Item ${listitem.title}\")\n//                listitem.did = null\n//                newitems.add(listitem)\n//            }\n//\n//\n//        }\n//\n//        doAsync {\n//\n//            db?.getDao()?.addAll(*newitems.toTypedArray())\n//            uiThread {\n//                toast(\"${newitems.size} Posts are Saved In Database!\")\n//            }\n//        }\n\n    }\n\n    fun sendToServer()\n    {\n//        val firestore = FirebaseFirestore.getInstance()\n//        val email = firebase_auth.currentUser?.email\n//        val batch = firestore.batch()\n//        val items = ArrayList<DiaryItem>()\n//        localitems.forEach{\n//            if(it.upload_status ==0)\n//                items.add(it)\n//        }\n//\n//        items.forEach {\n//           val setop = firestore.collection(\"users/$email/posts\")?.document(\"${it.title} ${it.did}\")\n//            batch.set(setop,it)\n//        }\n//\n//        batch.commit().addOnSuccessListener {\n//            items.forEach{\n//                it.upload_status =1\n//\n//                doAsync {\n//                    val db = DiaryDataBase.getInstance(this@FeedActivity)\n//                    db?.getDao()?.updateUploadStatus(it)\n//                }\n//            }\n//            diaryadapter?.notifyDataSetChanged()\n//            toast(\"Upload Complete!\")\n//        }\n\n    }\n\n    override fun onPostCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {\n        super.onPostCreate(savedInstanceState, persistentState)\n        mdrawerToggle?.syncState()\n    }\n\n\n\n}\n\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/FeedActivity.kt b/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/FeedActivity.kt
+--- a/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/FeedActivity.kt	(revision c069cd9f7096b776557805dbe7b5bf33509288ea)
++++ b/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/FeedActivity.kt	(date 1629133630885)
+@@ -153,19 +153,13 @@
+         else{
+             when(item?.itemId)
+             {
+-                R.id.add_new ->{
+-                    startActivity(Intent(this,AddDiaryActivity::class.java))
++                R.id.add_new -> startActivity(Intent(this,AddDiaryActivity::class.java))
+ 
+-                }
++                R.id.signout_feed_layoult -> viewModel.logoutUser()
+ 
+-                R.id.signout_feed_layoult ->{
+-                    viewModel.logoutUser()
+-                }
+ 
+-                R.id.upload ->{
+-                    //syncToCloud(diary_list)
+-                    sendToServer()
+-                }
++                R.id.upload -> viewModel.uploadToServer()
++
+ 
+                 R.id.download -> viewModel.downloadFromServer()
+             }
+@@ -175,62 +169,7 @@
+ 
+ 
+ 
+-    fun saveToLocalDatabase( list : ArrayList<DiaryItem>)
+-    {
+-//        val db = DiaryDataBase.getInstance(this@FeedActivity)
+-//        val newitems = ArrayList<DiaryItem>()
+-//        for(listitem in list)
+-//        {
+-//            if(!localitems.contains(listitem))
+-//            {
+-//                Log.d("Firebase","Adding New Item ${listitem.title}")
+-//                listitem.did = null
+-//                newitems.add(listitem)
+-//            }
+-//
+-//
+-//        }
+-//
+-//        doAsync {
+-//
+-//            db?.getDao()?.addAll(*newitems.toTypedArray())
+-//            uiThread {
+-//                toast("${newitems.size} Posts are Saved In Database!")
+-//            }
+-//        }
+-
+-    }
+ 
+-    fun sendToServer()
+-    {
+-//        val firestore = FirebaseFirestore.getInstance()
+-//        val email = firebase_auth.currentUser?.email
+-//        val batch = firestore.batch()
+-//        val items = ArrayList<DiaryItem>()
+-//        localitems.forEach{
+-//            if(it.upload_status ==0)
+-//                items.add(it)
+-//        }
+-//
+-//        items.forEach {
+-//           val setop = firestore.collection("users/$email/posts")?.document("${it.title} ${it.did}")
+-//            batch.set(setop,it)
+-//        }
+-//
+-//        batch.commit().addOnSuccessListener {
+-//            items.forEach{
+-//                it.upload_status =1
+-//
+-//                doAsync {
+-//                    val db = DiaryDataBase.getInstance(this@FeedActivity)
+-//                    db?.getDao()?.updateUploadStatus(it)
+-//                }
+-//            }
+-//            diaryadapter?.notifyDataSetChanged()
+-//            toast("Upload Complete!")
+-//        }
+-
+-    }
+ 
+     override fun onPostCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
+         super.onPostCreate(savedInstanceState, persistentState)
+Index: app/src/main/res/layout/diary_title_layout.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\n<androidx.constraintlayout.widget.ConstraintLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    android:layout_width=\"match_parent\"\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\"\n    xmlns:card_view=\"http://schemas.android.com/tools\"\n    android:layout_margin=\"3dp\"\n    android:layout_height=\"wrap_content\">\n\n    <androidx.cardview.widget.CardView\n        app:layout_constraintLeft_toLeftOf=\"parent\"\n        app:layout_constraintRight_toRightOf=\"parent\"\n        app:layout_constraintTop_toTopOf=\"parent\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"wrap_content\">\n        <androidx.constraintlayout.widget.ConstraintLayout\n            android:layout_width=\"match_parent\"\n            android:layout_height=\"wrap_content\"\n           >\n            <LinearLayout\n                app:layout_constraintLeft_toLeftOf=\"parent\"\n                app:layout_constraintTop_toTopOf=\"parent\"\n                android:orientation=\"vertical\"\n                app:layout_constraintRight_toLeftOf=\"@+id/cloud_upload_status_img\"\n                android:layout_width=\"match_parent\"\n                android:layout_margin=\"3dp\"\n                android:layout_weight=\"1\"\n                android:layout_height=\"wrap_content\">\n\n\n                <TextView\n                    android:id=\"@+id/diary_title\"\n                    android:layout_width=\"match_parent\"\n                    android:layout_height=\"wrap_content\"\n                    android:gravity=\"left\"\n                    android:paddingLeft=\"2dp\"\n                    android:text=\"Title\"\n                    android:textColor=\"@color/text_black\"\n                    android:textSize=\"30sp\" />\n\n                <TextView\n                    android:id=\"@+id/date_textview\"\n                    android:layout_width=\"match_parent\"\n                    android:layout_height=\"wrap_content\"\n                    android:gravity=\"left\"\n                    android:layout_marginTop=\"5dp\"\n                    android:paddingLeft=\"2dp\"\n                    android:text=\"10/212018\"\n                    android:textColor=\"@color/date_text\"\n                    android:textSize=\"15sp\" />\n\n            </LinearLayout>\n\n\n            <ImageView\n                android:layout_width=\"40sp\"\n                app:layout_constraintTop_toTopOf=\"parent\"\n                app:layout_constraintRight_toRightOf=\"parent\"\n                app:layout_constraintBottom_toBottomOf=\"parent\"\n                android:layout_margin=\"5sp\"\n                android:id=\"@+id/cloud_upload_status_img\"\n                android:layout_height=\"40sp\"\n                />\n        </androidx.constraintlayout.widget.ConstraintLayout>\n\n    </androidx.cardview.widget.CardView>\n\n\n</androidx.constraintlayout.widget.ConstraintLayout>\n\n\n\n\n\n\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/diary_title_layout.xml b/app/src/main/res/layout/diary_title_layout.xml
+--- a/app/src/main/res/layout/diary_title_layout.xml	(revision c069cd9f7096b776557805dbe7b5bf33509288ea)
++++ b/app/src/main/res/layout/diary_title_layout.xml	(date 1629134474732)
+@@ -1,71 +1,74 @@
+ <?xml version="1.0" encoding="utf-8"?>
+-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+     android:layout_width="match_parent"
+     xmlns:app="http://schemas.android.com/apk/res-auto"
+-    xmlns:card_view="http://schemas.android.com/tools"
+     android:layout_margin="3dp"
+     android:layout_height="wrap_content">
+ 
+     <androidx.cardview.widget.CardView
+-        app:layout_constraintLeft_toLeftOf="parent"
+-        app:layout_constraintRight_toRightOf="parent"
+-        app:layout_constraintTop_toTopOf="parent"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content">
+-        <androidx.constraintlayout.widget.ConstraintLayout
+-            android:layout_width="match_parent"
+-            android:layout_height="wrap_content"
+-           >
+-            <LinearLayout
+-                app:layout_constraintLeft_toLeftOf="parent"
+-                app:layout_constraintTop_toTopOf="parent"
+-                android:orientation="vertical"
+-                app:layout_constraintRight_toLeftOf="@+id/cloud_upload_status_img"
+-                android:layout_width="match_parent"
+-                android:layout_margin="3dp"
+-                android:layout_weight="1"
+-                android:layout_height="wrap_content">
++
++<LinearLayout
++    android:layout_width="match_parent"
++    android:orientation="horizontal"
++    android:weightSum="1"
++    android:layout_height="wrap_content">
++    <LinearLayout
++        android:orientation="vertical"
++        android:layout_width="0dp"
++        android:layout_weight=".7"
++        android:layout_margin="3dp"
++        android:gravity="left"
++        android:layout_height="wrap_content">
+ 
+-
+-                <TextView
+-                    android:id="@+id/diary_title"
+-                    android:layout_width="match_parent"
+-                    android:layout_height="wrap_content"
+-                    android:gravity="left"
+-                    android:paddingLeft="2dp"
+-                    android:text="Title"
+-                    android:textColor="@color/text_black"
+-                    android:textSize="30sp" />
++        <TextView
++            android:id="@+id/diary_title"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:gravity="left"
++            android:paddingLeft="2dp"
++            android:text="Title"
++            android:textColor="@color/text_black"
++            android:textSize="30sp" />
+ 
+-                <TextView
+-                    android:id="@+id/date_textview"
+-                    android:layout_width="match_parent"
+-                    android:layout_height="wrap_content"
+-                    android:gravity="left"
+-                    android:layout_marginTop="5dp"
+-                    android:paddingLeft="2dp"
+-                    android:text="10/212018"
+-                    android:textColor="@color/date_text"
+-                    android:textSize="15sp" />
++        <TextView
++            android:id="@+id/date_textview"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:gravity="left"
++            android:layout_marginTop="5dp"
++            android:paddingLeft="2dp"
++            android:text="10/212018"
++            android:textColor="@color/date_text"
++            android:textSize="15sp" />
+ 
+-            </LinearLayout>
++    </LinearLayout>
+ 
++    <LinearLayout
++        android:layout_width="0dp"
++        android:layout_weight=".3"
++        android:layout_gravity="right|end|center"
++        android:layout_height="wrap_content">
+ 
+-            <ImageView
+-                android:layout_width="40sp"
+-                app:layout_constraintTop_toTopOf="parent"
+-                app:layout_constraintRight_toRightOf="parent"
+-                app:layout_constraintBottom_toBottomOf="parent"
+-                android:layout_margin="5sp"
+-                android:id="@+id/cloud_upload_status_img"
+-                android:layout_height="40sp"
+-                />
+-        </androidx.constraintlayout.widget.ConstraintLayout>
++        <ImageView
++
++            android:layout_width="40sp"
++            android:layout_gravity="right|end|center"
++            android:layout_margin="5sp"
++            android:id="@+id/cloud_upload_status_img"
++            android:layout_height="40sp"
++            />
++
++    </LinearLayout>
++
++
++</LinearLayout>
+ 
+     </androidx.cardview.widget.CardView>
+ 
+ 
+-</androidx.constraintlayout.widget.ConstraintLayout>
++</LinearLayout>
+ 
+ 
+ 
+Index: app/src/main/java/com/example/thevampire/deardiary/deardiary/persistance/database/Dao/DiaryDao.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.thevampire.deardiary.deardiary.persistance.database.Dao\n\nimport androidx.room.*\nimport com.example.thevampire.deardiary.deardiary.persistance.database.entity.DiaryItem\n\n\n@Dao\ninterface DiaryDao{\n\n    @Delete\n    suspend fun delete(item : DiaryItem) : Int\n\n    @Query(\"SELECT * FROM DIARY where author = :email\")\n    fun getAll(email: String) : List<DiaryItem>\n\n    @Insert\n    suspend fun add(diary : DiaryItem)\n\n    @Insert\n    suspend fun addAll(vararg item : DiaryItem)\n\n\n    @Query(\"select * from DIARY where did = :did\")\n    fun getBody(did : Int) : DiaryItem\n\n\n    @Update\n    suspend fun updateBody(vararg item : DiaryItem?) : Int\n\n    @Query(\"DELETE FROM DIARY \")\n    suspend fun deleteAll() : Int\n\n    @Update\n    suspend fun updateUploadStatus(vararg item : DiaryItem?) : Int\n\n\n\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/thevampire/deardiary/deardiary/persistance/database/Dao/DiaryDao.kt b/app/src/main/java/com/example/thevampire/deardiary/deardiary/persistance/database/Dao/DiaryDao.kt
+--- a/app/src/main/java/com/example/thevampire/deardiary/deardiary/persistance/database/Dao/DiaryDao.kt	(revision c069cd9f7096b776557805dbe7b5bf33509288ea)
++++ b/app/src/main/java/com/example/thevampire/deardiary/deardiary/persistance/database/Dao/DiaryDao.kt	(date 1629131735702)
+@@ -19,6 +19,9 @@
+     @Insert
+     suspend fun addAll(vararg item : DiaryItem)
+ 
++    @Insert
++    suspend fun addAll(item : List<DiaryItem>)
++
+ 
+     @Query("select * from DIARY where did = :did")
+     fun getBody(did : Int) : DiaryItem
+Index: app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/viewmodels/RegisterViewModel.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.thevampire.deardiary.deardiary.ui.viewmodels\n\nimport androidx.lifecycle.ViewModel\nimport androidx.lifecycle.viewModelScope\nimport com.example.thevampire.deardiary.deardiary.repositories.DiaryAccount\nimport com.example.thevampire.deardiary.deardiary.repositories.DiaryRepository\nimport com.example.thevampire.deardiary.deardiary.utils.isValidEmail\nimport kotlinx.coroutines.flow.MutableStateFlow\nimport kotlinx.coroutines.flow.StateFlow\nimport kotlinx.coroutines.launch\nimport javax.inject.Inject\n\nclass RegisterViewModel @Inject constructor(private val repository: DiaryRepository) : ViewModel() {\n\n    private val _uiState : MutableStateFlow<UIState> = MutableStateFlow(\n        UIState.Error(\"\")\n    )\n    val uiState : StateFlow<UIState> = _uiState\n\n    fun createUser(diaryAccount: DiaryAccount) = viewModelScope.launch {\n        if(!performChecks(diaryAccount.name, diaryAccount.email, diaryAccount.password))\n            return@launch\n        else{\n            _uiState.value = UIState.Loading(\"Please wait\")\n            repository.createUser(diaryAccount)?.let {\n                _uiState.value = UIState.AccountCreated\n            }\n        }\n\n    }\n\n    private fun performChecks(name : String, username : String, password : String) : Boolean{\n        if(name.isNotEmpty() && username.isNotEmpty() && password.isNotEmpty() && password.length>=8 && username.isValidEmail())\n            return true\n        else\n        {\n            val errorMessage = StringBuilder()\n            if(username.isEmpty())\n                errorMessage.append(\"Enter Email\")\n            if(!username.isValidEmail())\n                errorMessage.append(\"Enter Valid Email\")\n            if(password.isEmpty())\n                errorMessage.append(\"Enter Password\")\n            if(name.isEmpty())\n                errorMessage.append(\"Enter Name\")\n            if(password.length<8)\n                errorMessage.append(\"Min 8 Characters\")\n\n            _uiState.value = UIState.Error(errorMessage.toString())\n            return false\n        }\n    }\n\n\n\n}\nsealed class UIState(){\n   object AccountCreated  : UIState()\n    data class Error(val message : String) : UIState()\n    data class Loading(val message: String) : UIState()\n}\n\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/viewmodels/RegisterViewModel.kt b/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/viewmodels/RegisterViewModel.kt
+--- a/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/viewmodels/RegisterViewModel.kt	(revision c069cd9f7096b776557805dbe7b5bf33509288ea)
++++ b/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/viewmodels/RegisterViewModel.kt	(date 1628698803189)
+@@ -26,7 +26,6 @@
+                 _uiState.value = UIState.AccountCreated
+             }
+         }
+-
+     }
+ 
+     private fun performChecks(name : String, username : String, password : String) : Boolean{
+Index: app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/RegisterActivity.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.thevampire.deardiary.deardiary.ui\n\nimport android.content.Intent\nimport androidx.appcompat.app.AppCompatActivity\nimport android.os.Bundle\nimport android.view.View\nimport android.widget.EditText\nimport android.widget.ProgressBar\nimport androidx.activity.viewModels\nimport androidx.lifecycle.lifecycleScope\nimport com.example.thevampire.deardiary.R\nimport com.example.thevampire.deardiary.databinding.ActivityRegisterBinding\nimport com.example.thevampire.deardiary.deardiary.repositories.DiaryAccount\nimport com.example.thevampire.deardiary.deardiary.ui.viewmodels.RegisterViewModel\nimport com.example.thevampire.deardiary.deardiary.ui.viewmodels.UIState\nimport com.example.thevampire.deardiary.deardiary.utils.isValidEmail\nimport com.example.thevampire.deardiary.deardiary.utils.showMessage\nimport com.google.android.material.snackbar.Snackbar\nimport com.google.firebase.auth.AuthResult\nimport com.google.firebase.auth.FirebaseAuth\nimport com.google.firebase.auth.FirebaseUser\nimport com.google.firebase.auth.UserProfileChangeRequest\nimport kotlinx.android.synthetic.main.activity_register.*\nimport kotlinx.coroutines.flow.collectLatest\n\n\nclass RegisterActivity : AppCompatActivity() {\n\n    lateinit var binding : ActivityRegisterBinding\n\n    val viewModel : RegisterViewModel by viewModels()\n\n\n    override fun onCreate(savedInstanceState: Bundle?) {\n        super.onCreate(savedInstanceState)\n        binding = ActivityRegisterBinding.inflate(layoutInflater)\n        setContentView(binding.root)\n        setSupportActionBar(binding.registerToolbar.ltoolbar)\n        supportActionBar?.title = \"Register User\"\n\n        setUpUI()\n        setUpObservers()\n    }\n\n    private fun setUpObservers() = lifecycleScope.launchWhenStarted {\n        viewModel.uiState.collectLatest {\n            when(it){\n                is UIState.AccountCreated ->{\n                    binding.progressBar.visibility = View.GONE\n                    Snackbar.make(binding.root,\"Account Created, Verification Email Sent!\",Snackbar.LENGTH_SHORT).show()\n                }\n                is UIState.Error ->{\n                    binding.progressBar.visibility = View.GONE\n                    if(it.message.isNotEmpty())\n                        Snackbar.make(binding.root,it.message,Snackbar.LENGTH_SHORT).show()\n                }\n                is UIState.Loading ->{\n                    binding.progressBar.visibility = View.VISIBLE\n                }\n            }\n        }\n    }\n\n    private fun setUpUI(){\n        with(binding){\n            registerBtn.setOnClickListener {\n                val name = editName.text.toString()\n                val email = editEmail.text.toString()\n                val password = editPassword.text.toString()\n                viewModel.createUser(DiaryAccount(name,email,password))\n            }\n        }\n    }\n\n\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/RegisterActivity.kt b/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/RegisterActivity.kt
+--- a/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/RegisterActivity.kt	(revision c069cd9f7096b776557805dbe7b5bf33509288ea)
++++ b/app/src/main/java/com/example/thevampire/deardiary/deardiary/ui/RegisterActivity.kt	(date 1628699542774)
+@@ -30,7 +30,6 @@
+ 
+     val viewModel : RegisterViewModel by viewModels()
+ 
+-
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+         binding = ActivityRegisterBinding.inflate(layoutInflater)
+Index: app/src/main/res/layout/activity_feed.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\n\n<androidx.drawerlayout.widget.DrawerLayout android:layout_width=\"match_parent\"\n    android:layout_height=\"match_parent\"\n    android:id=\"@+id/mdrawerLayout\"\n    android:background=\"@android:color/white\"\n    xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\">\n\n\n    <RelativeLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n\n        xmlns:tools=\"http://schemas.android.com/tools\"\n        android:layout_width=\"match_parent\"\n        android:id=\"@+id/feed_relative_layout\"\n        android:layout_height=\"match_parent\"\n        tools:context=\".deardiary.ui.FeedActivity\">\n\n        <include\n            android:id=\"@+id/feed_toolbar\"\n            layout=\"@layout/toolbar\"\n            android:layout_width=\"match_parent\"\n            android:layout_height=\"wrap_content\"\n            android:visibility=\"visible\" />\n\n        <androidx.recyclerview.widget.RecyclerView\n            android:layout_below=\"@+id/feed_toolbar\"\n            android:layout_width=\"match_parent\"\n            android:layout_height=\"wrap_content\"\n            android:id=\"@+id/feed_recycler_view\"\n            />\n    </RelativeLayout>\n    \n    <com.google.android.material.navigation.NavigationView\n        android:layout_width=\"wrap_content\"\n        android:layout_height=\"match_parent\"\n        android:layout_gravity=\"start\"\n        android:fitsSystemWindows=\"true\"\n        android:id=\"@+id/navigationview\"\n        app:menu=\"@menu/navigatin_drawer_menu\"\n        app:headerLayout=\"@layout/nav_header_layout\"\n        ></com.google.android.material.navigation.NavigationView>\n</androidx.drawerlayout.widget.DrawerLayout>\n\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/activity_feed.xml b/app/src/main/res/layout/activity_feed.xml
+--- a/app/src/main/res/layout/activity_feed.xml	(revision c069cd9f7096b776557805dbe7b5bf33509288ea)
++++ b/app/src/main/res/layout/activity_feed.xml	(date 1629133656992)
+@@ -26,7 +26,7 @@
+         <androidx.recyclerview.widget.RecyclerView
+             android:layout_below="@+id/feed_toolbar"
+             android:layout_width="match_parent"
+-            android:layout_height="wrap_content"
++            android:layout_height="match_parent"
+             android:id="@+id/feed_recycler_view"
+             />
+     </RelativeLayout>

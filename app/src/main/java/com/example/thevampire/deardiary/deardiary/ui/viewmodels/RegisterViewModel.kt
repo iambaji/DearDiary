@@ -26,7 +26,6 @@ class RegisterViewModel @Inject constructor(private val repository: DiaryReposit
                 _uiState.value = UIState.AccountCreated
             }
         }
-
     }
 
     private fun performChecks(name : String, username : String, password : String) : Boolean{

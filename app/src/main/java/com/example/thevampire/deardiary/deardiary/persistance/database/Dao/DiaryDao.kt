@@ -19,6 +19,9 @@ interface DiaryDao{
     @Insert
     suspend fun addAll(vararg item : DiaryItem)
 
+    @Insert
+    suspend fun addAll(item : List<DiaryItem>)
+
 
     @Query("select * from DIARY where did = :did")
     fun getBody(did : Int) : DiaryItem

@@ -40,7 +40,7 @@ class DiaryAdapter @Inject constructor(@ApplicationContext val context : Context
     }
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
 
-        val diaryTitleLayoutBinding = DiaryTitleLayoutBinding.inflate(parent.context.layoutInflater)
+        val diaryTitleLayoutBinding = DiaryTitleLayoutBinding.inflate(context.layoutInflater)
        return ViewHolder(diaryTitleLayoutBinding).apply {
            diaryTitleLayoutBinding.root.setOnClickListener {
                val intent = Intent(parent.context,AddDiaryActivity::class.java)

@@ -1,68 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:card_view="http://schemas.android.com/tools"
-    android:layout_margin="3dp"
-    android:layout_height="wrap_content">
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <androidx.cardview.widget.CardView
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+<!--    <androidx.cardview.widget.CardView-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content">-->
+
+
+<!--    </androidx.cardview.widget.CardView>-->
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/item_left_view"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <androidx.constraintlayout.widget.ConstraintLayout
+        app:layout_constraintRight_toLeftOf="@id/right_view"
+        app:layout_constraintEnd_toStartOf="@id/right_view"
+        android:layout_marginRight="50dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintHorizontal_chainStyle="packed"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-           >
-            <LinearLayout
-                app:layout_constraintLeft_toLeftOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                android:orientation="vertical"
-                app:layout_constraintRight_toLeftOf="@+id/cloud_upload_status_img"
+            android:orientation="vertical"
+            app:layout_constraintLeft_toLeftOf="@id/item_left_view"
+            app:layout_constraintTop_toTopOf="@id/item_left_view">
+
+            <TextView
+                android:id="@+id/diary_title"
                 android:layout_width="match_parent"
-                android:layout_margin="3dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:gravity="left"
+                android:paddingLeft="2dp"
+                android:text="Title"
+                android:textColor="@color/text_black"
+                android:textSize="30sp" />
 
+            <TextView
+                android:id="@+id/date_textview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:gravity="left"
+                android:paddingLeft="2dp"
+                android:text="10/212018"
+                android:textColor="@color/date_text"
+                android:textSize="15sp" />
 
-                <TextView
-                    android:id="@+id/diary_title"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="left"
-                    android:paddingLeft="2dp"
-                    android:text="Title"
-                    android:textColor="@color/text_black"
-                    android:textSize="30sp" />
-
-                <TextView
-                    android:id="@+id/date_textview"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="left"
-                    android:layout_marginTop="5dp"
-                    android:paddingLeft="2dp"
-                    android:text="10/212018"
-                    android:textColor="@color/date_text"
-                    android:textSize="15sp" />
-
-            </LinearLayout>
-
-
+        </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            app:layout_constraintRight_toRightOf="@id/right_view"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/right_view"
+            android:id="@+id/right_view"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/item_left_view"
+            app:layout_constraintLeft_toRightOf="@id/item_left_view"
+            android:layout_height="wrap_content">
             <ImageView
-                android:layout_width="40sp"
+                app:layout_constraintRight_toLeftOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintRight_toRightOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                android:layout_margin="5sp"
                 android:id="@+id/cloud_upload_status_img"
+                android:layout_width="40sp"
                 android:layout_height="40sp"
                 />
-        </androidx.constraintlayout.widget.ConstraintLayout>
 
-    </androidx.cardview.widget.CardView>
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

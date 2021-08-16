@@ -18,8 +18,6 @@ class FeedViewModel @Inject constructor(private val repository: DiaryRepository)
 
     @Inject lateinit var authSession: AuthSession
 
-    private val _diaryNotes = MutableLiveData<List<DiaryItem>>()
-    val diaryNotes : LiveData<List<DiaryItem>>  = _diaryNotes
     val uiState = MutableStateFlow<FeedUIState>(FeedUIState.NotesSuccess(emptyList()))
 
 
@@ -37,12 +35,21 @@ class FeedViewModel @Inject constructor(private val repository: DiaryRepository)
         viewModelScope.launch {
             uiState.value = FeedUIState.Loading("Please wait!")
             val notes = repository.getNotes()
-//            _diaryNotes.value = notes
             uiState.value = FeedUIState.NotesSuccess(notes)
         }
     }
 
-    fun downloadFromServer() = runBlocking { repository.getNotesFromServer() }
+
+
+    fun downloadFromServer() = viewModelScope.launch {
+        uiState.value = FeedUIState.Loading("Please wait!")
+        val notes = repository.getNotesFromServer()
+        uiState.value = FeedUIState.NotesSuccess(notes)
+    }
+
+    fun uploadToServer() =  viewModelScope.launch {
+        repository.sendToServer()
+    }
 
 
     sealed class FeedUIState{
